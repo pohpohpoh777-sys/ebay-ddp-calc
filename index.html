@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eBay米国DDP 出品価格逆算ツール｜関税・Zonos手数料込みで利益が残る価格を計算</title>
+<meta name="description" content="日本郵便＋Zonosで米国へDDP発送するeBayセラー向け。仕入れ値・送料・関税率・eBay手数料・Zonos手数料から、目標利益が残る出品価格（USD）を逆算します。無料・登録不要。">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--sub:#6b6a65;--line:#e3e1da;--accent:#1f4e79;--good:#1e7a46;--bad:#b3261e;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.35rem;line-height:1.4;margin:8px 0 4px}
+.lead{color:var(--sub);font-size:.92rem;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{font-size:1rem;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:.82rem;color:var(--sub);margin-bottom:4px}
+.field{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+.field input,.field select{flex:1;border:0;padding:10px;font-size:1rem;min-width:0;background:transparent}
+.field span{padding:0 10px;color:var(--sub);font-size:.85rem}
+.hint{font-size:.75rem;color:var(--sub);margin-top:3px}
+.toggle{display:flex;gap:8px;flex-wrap:wrap}
+.toggle label{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink);font-size:.88rem;cursor:pointer;margin:0}
+.result{background:var(--accent);color:#fff;border:0}
+.result .big{font-size:2.1rem;font-weight:700;line-height:1.2}
+.result .sub{opacity:.85;font-size:.88rem}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
+td:first-child,th:first-child{text-align:left}
+tr.total td{font-weight:700;border-top:2px solid var(--ink)}
+.neg{color:var(--bad)}.pos{color:var(--good)}
+.warn{background:#fff8e6;border:1px solid #f0d58a;border-radius:10px;padding:12px;font-size:.82rem}
+.warn b{display:block;margin-bottom:4px}
+footer{font-size:.75rem;color:var(--sub);margin-top:24px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>eBay米国DDP 出品価格逆算ツール</h1>
+<p class="lead">日本郵便＋Zonosで米国へ発送するとき、関税・Zonos手数料・eBay手数料を引いても<strong>目標利益が残る出品価格</strong>を逆算します。入力内容はこの端末から外に送信されません。</p>
+
+<div class="card">
+<h2>1. 商品とコスト</h2>
+<div class="grid">
+<div><label>仕入れ値</label><div class="field"><input id="cost" type="number" inputmode="decimal" value="1500"><span>円</span></div></div>
+<div><label>梱包資材費</label><div class="field"><input id="pack" type="number" inputmode="decimal" value="100"><span>円</span></div></div>
+<div><label>実際の送料（日本郵便に払う額）</label><div class="field"><input id="ship" type="number" inputmode="decimal" value="2040"><span>円</span></div><div class="hint">例：国際エアパケット 455g ≈ 2,040円</div></div>
+<div><label>目標利益</label><div class="field"><input id="target" type="number" inputmode="decimal" value="1500"><span>円</span></div></div>
+</div>
+</div>
+
+<div class="card">
+<h2>2. 送料の取り方</h2>
+<div class="toggle">
+<label><input type="radio" name="shipmode" value="separate" checked> 送料は別で買い手が払う</label>
+<label><input type="radio" name="shipmode" value="free"> 送料込み（Free shipping）</label>
+</div>
+<div class="grid" id="shipChargeRow" style="margin-top:12px">
+<div><label>買い手に請求する送料</label><div class="field"><input id="shipCharge" type="number" inputmode="decimal" value="14"><span>USD</span></div><div class="hint">送料込みにすると関税の課税対象額に送料も入るため不利になります</div></div>
+</div>
+</div>
+
+<div class="card">
+<h2>3. 関税・手数料・為替</h2>
+<div class="grid">
+<div><label>関税率（合計）</label><div class="field"><input id="duty" type="number" inputmode="decimal" value="12.5" step="0.1"><span>%</span></div><div class="hint">品目（HTSコード）で変わります。Zonosの計算画面の値で上書きしてください</div></div>
+<div><label>通関・処理手数料（固定部分）</label><div class="field"><input id="zonos" type="number" inputmode="decimal" value="568"><span>円</span></div><div class="hint">荷物ごとにかかる部分。実績からの逆算値</div></div>
+<div><label>通関・処理手数料（商品価格に比例）</label><div class="field"><input id="zonosRate" type="number" inputmode="decimal" value="1.2" step="0.1"><span>%</span></div><div class="hint">実際の発送2件から逆算：約568円＋商品価格の約1.2%</div></div>
+<div><label>eBay取引手数料率（合計・税込み）</label><div class="field"><input id="fvf" type="number" inputmode="decimal" value="16.55" step="0.01"><span>%</span></div><div class="hint">落札手数料＋海外取引手数料＋消費税。実際の注文2件と一致した値</div></div>
+<div><label>買い手の売上税率（目安）</label><div class="field"><input id="salesTax" type="number" inputmode="decimal" value="8" step="0.1"><span>%</span></div><div class="hint">eBayは売上税を含めた合計に手数料をかけます。州で変わるので目安です</div></div>
+<div><label>広告料率（Promoted Listings）</label><div class="field"><input id="ads" type="number" inputmode="decimal" value="0" step="0.1"><span>%</span></div><div class="hint">広告を使っていなければ0。商品価格＋送料にかかります</div></div>
+<div><label>1注文あたり固定手数料</label><div class="field"><input id="fixed" type="number" inputmode="decimal" value="0.4" step="0.01"><span>USD</span></div></div>
+<div><label>為替レート</label><div class="field"><input id="fx" type="number" inputmode="decimal" value="150" step="0.1"><span>円/USD</span></div><div class="hint">入金時の実勢より少し円高寄りにすると安全です</div></div>
+</div>
+</div>
+
+<div class="card result" id="resultCard">
+<div class="sub">推奨 出品価格（商品価格）</div>
+<div class="big" id="outPrice">—</div>
+<div class="sub" id="outSub"></div>
+</div>
+
+<div class="card">
+<h2>内訳（推奨価格で売れた場合）</h2>
+<table id="breakdown"></table>
+</div>
+
+<div class="card">
+<h2>価格を変えたときの利益</h2>
+<table id="sens"></table>
+</div>
+
+<div class="warn">
+<b>ご注意</b>
+これは目安を出すための計算ツールです。2026年7月24日以降、郵便で米国へ送る荷物にもMFN（通常関税）やSection 301などの通常の関税が適用され、税率は品目と原産国で変わります。実際の関税額は発送前にZonosの計算画面で必ず確認してください。eBayの手数料率はカテゴリやストア契約で異なります。
+</div>
+
+<footer>
+参考：<a href="https://zonos.com/ja/docs/postal/shipping-via-posts/zonos-and-japan-post/zonos-prepay" rel="nofollow">Zonos（日本郵便向け）FAQ</a> ／ <a href="https://wwwcojp.ebay.com/ddp-info" rel="nofollow">eBay 米国向けDDP必須化のお知らせ</a><br>
+手数料の初期値は、郵便局からDDP発送した実際の注文の数字をもとにしています → <a href="https://note.com/pohx_export/n/nf694531d9f75">同じ$35でも手残り127円と1,171円になった実例（note）</a><br>
+最終確認日：2026年11月9日
+</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+const yen = v => (v<0?'−':'') + Math.round(Math.abs(v)).toLocaleString('ja-JP') + '円';
+const usd = v => '$' + v.toFixed(2);
+
+function calc(P, p){
+  // P: item price USD. Returns breakdown in JPY.
+  const S = p.free ? 0 : p.shipCharge;
+  const gross = P + S;                       // eBay fees apply to item + shipping
+  const ebayFeeUsd = gross * (1 + p.salesTax / 100) * p.fvf / 100 + p.fixed + gross * p.ads / 100;
+  const dutyBase = P;                        // with free shipping, shipping is inside P
+  const dutyUsd = dutyBase * p.duty / 100;
+  const r = {
+    revenue: gross * p.fx,
+    ebayFee: ebayFeeUsd * p.fx,
+    duty: dutyUsd * p.fx,
+    zonos: p.zonos + P * p.fx * p.zonosRate / 100,
+    ship: p.ship,
+    pack: p.pack,
+    cost: p.cost
+  };
+  r.profit = r.revenue - r.ebayFee - r.duty - r.zonos - r.ship - r.pack - r.cost;
+  return r;
+}
+
+function solve(p){
+  // profit(P) is linear in P: profit = a*P + b
+  const r0 = calc(0, p), r1 = calc(1, p);
+  const a = r1.profit - r0.profit, b = r0.profit;
+  if (a <= 0) return null;
+  return (p.target - b) / a;
+}
+
+function render(){
+  const free = document.querySelector('input[name=shipmode]:checked').value === 'free';
+  $('shipChargeRow').style.display = free ? 'none' : '';
+  const p = {
+    cost:num('cost'), pack:num('pack'), ship:num('ship'), target:num('target'),
+    free, shipCharge:num('shipCharge'), duty:num('duty'), zonos:num('zonos'), zonosRate:num('zonosRate'),
+    fvf:num('fvf'), salesTax:num('salesTax'), ads:num('ads'), fixed:num('fixed'), fx:num('fx')
+  };
+  if (p.fx <= 0){ $('outPrice').textContent='—'; $('outSub').textContent='為替レートを入力してください'; return; }
+  let P = solve(p);
+  if (P === null){ $('outPrice').textContent='計算不可'; $('outSub').textContent='手数料率と関税率の合計が100%以上です'; return; }
+  P = Math.ceil(P * 100) / 100;              // round up to the cent
+  const P99 = Math.max(0.99, Math.ceil(P) - 0.01 < P ? Math.ceil(P) + 0.99 : Math.ceil(P) - 0.01);
+  const r = calc(P, p);
+  $('outPrice').textContent = P <= 0 ? usd(0.99) : usd(P);
+  $('outSub').textContent = (P <= 0 ? '送料収入だけで目標利益を超えています' :
+    `キリのいい価格なら ${usd(P99)}（利益 ${yen(calc(P99,p).profit)}）`) +
+    (free ? '' : ` ／ 送料 ${usd(p.shipCharge)} 別`);
+
+  const rows = [
+    ['売上（商品＋送料）', r.revenue, 1],
+    ['eBay手数料＋広告料', -r.ebayFee],
+    ['関税（売り手負担・DDP）', -r.duty],
+    ['通関・処理手数料', -r.zonos],
+    ['送料（日本郵便）', -r.ship],
+    ['梱包資材', -r.pack],
+    ['仕入れ値', -r.cost]
+  ];
+  $('breakdown').innerHTML = rows.map(([k,v]) =>
+    `<tr><td>${k}</td><td class="${v<0?'neg':''}">${yen(v)}</td></tr>`).join('') +
+    `<tr class="total"><td>手元に残る利益</td><td class="${r.profit<0?'neg':'pos'}">${yen(r.profit)}</td></tr>`;
+
+  const base = Math.max(1, Math.round(P));
+  const steps = [-10,-5,0,5,10].map(d => base + d).filter(v => v > 0);
+  $('sens').innerHTML = '<tr><th>出品価格</th><th>利益</th><th>利益率</th></tr>' +
+    steps.map(v => { const x = calc(v,p); const m = x.revenue>0 ? x.profit/x.revenue*100 : 0;
+      return `<tr><td>${usd(v)}</td><td class="${x.profit<0?'neg':'pos'}">${yen(x.profit)}</td><td>${m.toFixed(1)}%</td></tr>`; }).join('');
+}
+
+document.querySelectorAll('input').forEach(el => el.addEventListener('input', render));
+render();
+</script>
+</body>
+</html>
